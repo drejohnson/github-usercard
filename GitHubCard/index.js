@@ -4,23 +4,23 @@
 */
 
 // Implemented using promises ...ok
-axios
-  .get("https://api.github.com/users/drejohnson")
-  .then(response => {
-    console.log(response.data);
-  })
-  .catch(error => {
-    console.log("The data was not returned", error);
-  });
+// axios
+//   .get("https://api.github.com/users/drejohnson")
+//   .then(response => {
+//     console.log(response.data);
+//   })
+//   .catch(error => {
+//     console.log("The data was not returned", error);
+//   });
 // Implemented using async/await ...awesome!!!
-(async function() {
-  try {
-    const response = await axios.get("https://api.github.com/users/drejohnson");
-    console.log(response.data);
-  } catch (error) {
-    console.log("The data was not returned", error);
-  }
-})();
+// (async function() {
+//   try {
+//     const response = await axios.get("https://api.github.com/users/drejohnson");
+//     console.log(response.data);
+//   } catch (error) {
+//     console.log("The data was not returned", error);
+//   }
+// })();
 
 /* Step 2: Inspect and study the data coming back, this is YOUR 
    github info! You will need to understand the structure of this 
@@ -101,7 +101,7 @@ const createElement = () =>
           children.map(child => {
             return typeof child === "string"
               ? (element.textContent = child)
-              : element.appendChild(child);
+              : element.append(child);
           });
           return element;
         };
@@ -124,45 +124,64 @@ const githubCard = ({
   div({ class: "card" }, [
     img({ src: avatar_url }),
     div({ class: "class-info" }, [
-      h3({ class: "name" }, name),
+      name && h3({ class: "name" }, name),
       p({ class: "username" }, login),
-      p({}, `Location: ${location}`),
+      location && p({}, `Location: ${location}`),
       p({}, ["Profile: ", a({ href: html_url }, html_url)]),
       p({}, `Followers: ${followers}`),
       p({}, `Following: ${following}`),
-      p({}, `Bio: ${bio}`)
+      bio && p({}, `Bio: ${bio}`)
     ])
   ]);
 
-function getProfile(username) {
-  const url = `https://api.github.com/users/${username}`;
+
+function getUser(username) {
+  return Promise.resolve(username);
+}
+getUser("drejohnson").then(user => {
+  const url = `https://api.github.com/users/${user}`;
   return axios
     .get(url, {
       headers: {
-        Authorization: `token 7a4c6866f516dc2e838363314c09c372c6cff3e7`
+        Authorization: `token 676f88cfa4ca382e7091616a09fa9f7b2cf2449f`
       }
     })
     .then(response => {
-      const me = response.data;
-      const card = githubCard(me);
-      cards.appendChild(card);
-      return me;
-    })
-    .then(user =>
-      axios
-        .get(user.followers_url, {
+      if (response.statusText === 'OK') {
+        const card = githubCard(response.data);
+        cards.appendChild(card);
+        // console.log(card);
+        return response.data
+      }
+    });
+}).then(me => {
+  return axios
+  .get(me.followers_url, {
+    headers: {
+      Authorization: `token 676f88cfa4ca382e7091616a09fa9f7b2cf2449f`
+    }
+  }).then(response => {
+    followersArray.push(...response.data);
+    return followersArray
+  })
+  .then(followers => followers.map(follower => {
+    // console.log(getUser(follower.login))
+    return getUser(follower.login).then(user => {
+      // console.log(user)
+      const url = `https://api.github.com/users/${user}`;
+      // console.log(url)
+      return axios
+        .get(url, {
           headers: {
-            Authorization: `token 7a4c6866f516dc2e838363314c09c372c6cff3e7`
+            Authorization: `token 676f88cfa4ca382e7091616a09fa9f7b2cf2449f`
           }
         })
-        .then(response => response.data)
-        .then(followers =>
-          followers.map(follower => getProfile(follower.login))
-        )
-    )
-    .catch(error => {
-      console.log("The data was not returned", error);
-    });
-}
-
-getProfile("drejohnson");
+        .then(response => {
+          if (response.statusText === 'OK') {
+            const card = githubCard(response.data);
+            cards.appendChild(card);
+          }
+        })
+    })
+  }))
+})
